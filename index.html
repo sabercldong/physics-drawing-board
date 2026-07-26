@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>物理绘图板</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="loginLayer">
+    <div class="login-box">
+        <h2>物理绘图板</h2>
+        <p style="margin:-20px 0 24px 0; font-size:13px; color:var(--text-muted);">登录后使用画布与元件库</p>
+        <div class="input-group"><label>账号</label><input type="text" id="loginUser" placeholder="例如 Stu001 或 admin" autocomplete="username"></div>
+        <div class="input-group"><label>密码</label><input type="password" id="loginPass" placeholder="请输入密码" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+        <button type="button" class="login-btn" onclick="doLogin()" id="loginSubmitBtn" aria-label="登录并进入绘图">进入绘图</button>
+        <p class="login-hint">管理员账号：admin　密码：888888</p>
+        <p class="author-credit">董兴习｜合肥一六八中学<br>许琴｜华东师范大学</p>
+    </div>
+</div>
+
+<div id="appLayer" style="display:none; height:100vh; flex-direction:column;">
+    <div class="header">
+        <div class="toolbar-sect left-sect">
+            <div class="btn active" id="btnSelect" onclick="setMode('select')" title="选择 (V)"><i class="fas fa-mouse-pointer"></i></div>
+            <div class="btn" id="btnDraw" onclick="setMode('draw')" title="画笔 (P)"><i class="fas fa-pen"></i></div>
+            <div class="btn" onclick="deleteSelected()" title="删除 (Del)"><i class="fas fa-trash"></i></div>
+            <div class="btn" onclick="clearCanvas()" title="清空"><i class="fas fa-eraser"></i></div>
+            <div class="btn" id="btnUndo" onclick="undo()" title="撤销 (Ctrl/Cmd+Z)"><i class="fas fa-undo"></i></div>
+            <div class="btn" id="btnRedo" onclick="redo()" title="重做 (Ctrl/Cmd+Y)"><i class="fas fa-redo"></i></div>
+        </div>
+        
+        <div class="toolbar-sect center-sect">
+            <div class="btn" onclick="addShape('line')" title="直线"><i class="fas fa-slash"></i></div>
+            <div class="btn" onclick="addShape('arrow')" title="箭头"><i class="fas fa-long-arrow-alt-right"></i></div>
+            <div class="btn" onclick="addShape('rect')" title="矩形"><i class="far fa-square"></i></div>
+            <div class="btn" onclick="addShape('circle')" title="圆"><i class="far fa-circle"></i></div>
+            <div class="btn" onclick="addShape('text')" title="文字"><i class="fas fa-font"></i></div>
+            <div class="tool-btn" onclick="addSVG('eraser_tape')" title="局部擦除 (修正带)" 
+                         style="border: none !important; background: transparent !important; box-shadow: none !important; outline: none !important;">
+                        
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="margin-top: 4px;">
+                            <path d="M 8 18 L 4 14 L 14 4 L 18 8 Z" opacity="0.6"/>
+                            <path d="M 6 18 L 8 20 M 10 16 L 12 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                 
+        </div>
+        
+        <div class="toolbar-sect right-sect">
+            <span id="currentUserDisplay" style="margin-right:15px; font-size:12px; color:#999;"></span>
+            <button type="button" class="btn-sm" onclick="saveProjectFile()" title="导出可继续编辑的工程文件">保存工程</button>
+            <button type="button" class="btn-sm" onclick="document.getElementById('projectFileInput').click()" title="打开绘图工程文件">打开工程</button>
+            <input type="file" id="projectFileInput" accept="application/json,.json" hidden onchange="loadProjectFile(event)">
+            <button type="button" class="btn-primary" onclick="exportImage('png')" aria-label="保存为 PNG 图片">保存图片</button>
+            <button type="button" class="btn-sm" onclick="exportImage('svg')">SVG</button>
+            <button type="button" class="btn-sm" onclick="location.reload()" style="color:#ff4d4f;border-color:#ff4d4f">退出</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <div class="sb-header" role="heading" aria-level="2">元件工具箱</div>
+            <div class="sb-search-wrap">
+                <input type="text" id="componentSearch" placeholder="搜索元件..." class="sb-search-input" oninput="filterComponents()">
+            </div>
+            <div class="sb-content">
+                
+                <div class="sb-group" data-group="几何与数学">
+                <div class="sb-group-title" onclick="toggleGroup(this)"><i class="fas fa-chevron-down sb-group-icon"></i> 几何与数学</div>
+                <div class="sb-grid">
+                    <div class="tool-btn" onclick="addSVG('coord')" title="坐标系"><i class="fas fa-plus"></i></div>
+                    <div class="tool-btn" onclick="addSVG('coord3d')" title="3D坐标"><i class="fas fa-cubes"></i></div>
+                    <div class="tool-btn" onclick="addSVG('angle')" title="角度">∠</div>
+                    <div class="tool-btn" onclick="addSVG('brace')" title="大括号">}</div>
+                    <div class="tool-btn" onclick="addSVG('triangle_geo')" title="三角形">△</div>
+                    <div class="tool-btn" onclick="addSVG('cylinder')" title="圆柱体"><i class="fas fa-database"></i></div>
+                    <div class="tool-btn" onclick="addSVG('triangle_arb')" title="任意三角形">△</div>
+                    <div class="tool-btn" onclick="addSVG('triangle_right')" title="直角三角形" data-title="直角三角形"><i class="fas fa-play" style="transform: rotate(-90deg); font-size:10px"></i></div>
+                    <div class="tool-btn" onclick="addSVG('parallelogram')" title="平行四边形"><i class="fas fa-vector-square" style="transform: skewX(-20deg);"></i></div>
+                    <div class="tool-btn" onclick="addSVG('trapezoid')" title="梯形"><i class="fas fa-draw-polygon"></i></div>
+                    <div class="tool-btn" onclick="addSVG('rhombus')" title="菱形">◇</div>
+                    <div class="tool-btn" onclick="addSVG('pentagon')" title="五边形"><i class="fas fa-certificate"></i></div>
+                    <div class="tool-btn" onclick="addSVG('hexagon')" title="六边形"><i class="fas fa-cube"></i></div>
+                    <div class="tool-btn" onclick="addSVG('semicircle')" title="半圆">D</div>
+                    <div class="tool-btn" onclick="addSVG('quarter_circle')" title="1/4圆">◔</div>
+                  
+                    <div class="tool-btn" onclick="addSVG('cube')" title="正方体"><i class="fas fa-cube"></i></div>
+                    <div class="tool-btn" onclick="addSVG('cuboid')" title="长方体"><i class="fas fa-box"></i></div>
+                    <div class="tool-btn" onclick="addSVG('cylinder')" title="圆柱体"><i class="fas fa-database"></i></div>
+                    <div class="tool-btn" onclick="addSVG('cone')" title="圆锥"><i class="fas fa-filter"></i></div>
+                    <div class="tool-btn" onclick="addSVG('sphere')" title="球体"><i class="fas fa-globe"></i></div>
+                    <div class="tool-btn" onclick="addSVG('prism_tri')" title="三棱柱"><i class="fas fa-caret-up"></i></div>
+                    <div class="tool-btn" onclick="addSVG('prism_quad')" title="四棱柱"><i class="fas fa-square"></i></div>
+                    <div class="tool-btn" onclick="addSVG('parallelepiped')" title="平行六面体"><i class="fas fa-layer-group"></i></div>
+                    <div class="tool-btn" onclick="addSVG('frustum')" title="棱台"><i class="fas fa-landmark"></i></div>
+                </div>
+                </div>
+
+                <div class="sb-group" data-group="力学组件">
+                <div class="sb-group-title" onclick="toggleGroup(this)"><i class="fas fa-chevron-down sb-group-icon"></i> 力学组件</div>
+                <div class="sb-grid">
+                    <div class="tool-btn" onclick="addSVG('block')" title="滑块">□</div>
+                    <div class="tool-btn" onclick="addSVG('point')" title="质点">●</div>
+                    <div class="tool-btn" onclick="addSVG('ball')" title="小球"><i class="fas fa-circle"></i></div>
+                    
+                    <div class="tool-btn" onclick="addSVG('wall')" title="墙壁/地面"><i class="fas fa-ruler-horizontal"></i></div>
+                    <div class="tool-btn" onclick="addSVG('wall_corner')" title="直角墙"><i class="fas fa-angle-left"></i></div>
+                    <div class="tool-btn" onclick="addSVG('table')" title="桌面"><i class="fas fa-table"></i></div>
+                    
+                    <div class="tool-btn" onclick="addSVG('spring')" title="弹簧"><i class="fas fa-vector-square" style="font-size:10px"></i></div>
+                    <div class="tool-btn" onclick="addSVG('rod')" title="轻杆">/</div>
+                    <div class="tool-btn" onclick="addSVG('hook')" title="挂钩">J</div>
+                    <div class="tool-btn" onclick="addSVG('ruler')" title="刻度尺"><i class="fas fa-ruler"></i></div>
+                    <div class="tool-btn" onclick="addSVG('scale')" title="测力计">|||</div>
+                    <div class="tool-btn" onclick="addSVG('balance')" title="天平"><i class="fas fa-balance-scale-left" style="font-size:10px"></i></div>
+                    
+                    <div class="tool-btn" onclick="addSVG('cart')" title="小车"><i class="fas fa-truck-pickup" style="font-size:10px"></i></div>
+                    <div class="tool-btn" onclick="addSVG('train')" title="多节火车"><i class="fas fa-train" style="font-size:10px"></i></div>
+                    <div class="tool-btn" onclick="addSVG('boat')" title="小船"><i class="fas fa-ship" style="font-size:10px"></i></div>
+                    <div class="tool-btn" onclick="addSVG('stickman')" title="人"><i class="fas fa-child"></i></div>
+
+                    <div class="tool-btn" onclick="addSVG('pulley')" title="滑轮"><i class="fas fa-compact-disc"></i></div>
+                    <div class="tool-btn" onclick="addSVG('wheel')" title="辐条轮"><i class="far fa-sun"></i></div>
+                    <div class="tool-btn" onclick="addSVG('gear')" title="齿轮"><i class="fas fa-cog"></i></div>
+                    <div class="tool-btn" onclick="addSVG('wedge')" title="斜面"><i class="fas fa-play" style="transform: rotate(-90deg); font-size:10px"></i></div>
+                    
+                    <div class="tool-btn" onclick="addSVG('groove_semi')" title="半圆槽">◡</div>
+                    <div class="tool-btn" onclick="addSVG('groove_quarter')" title="1/4槽">⌊</div>
+                    <div class="tool-btn" onclick="addSVG('ellipse_mech')" title="椭圆">0</div>
+                    <div class="tool-btn" onclick="addSVG('traj_hori')" title="平抛">⤵</div>
+                    <div class="tool-btn" onclick="addSVG('traj_obli')" title="斜抛">∩</div>
+                    
+                    <div class="tool-btn" onclick="addSVG('weight')" title="钩码"><i class="fas fa-weight-hanging" style="font-size:10px"></i></div>
+                    <div class="tool-btn" onclick="addSVG('pendulum')" title="单摆"><i class="fas fa-stopwatch"></i></div>
+                    <div class="tool-btn" onclick="addSVG('ticker_timer')" title="打点计时器" style="font-weight:bold; letter-spacing:-2px;">:::</div>
+                    <div class="tool-btn" onclick="addSVG('digi_timer')" title="数字计时器"><i class="fas fa-stopwatch-20"></i></div>
+                    <div class="tool-btn" onclick="addSVG('photogate')" title="光电门"><i class="fas fa-door-open"></i></div>
+                    <div class="tool-btn" onclick="addSVG('air_track')" title="气垫导轨">==</div>
+                    <div class="tool-btn" onclick="addSVG('slot_weights')" title="槽码"><i class="fas fa-weight-hanging"></i></div>
+                    <div class="tool-btn" onclick="addSVG('gate_flag')" title="遮光条">|</div>
+                    <div class="tool-btn" onclick="addSVG('scale_table')" title="台式弹簧秤"><i class="fas fa-weight"></i></div>
+                    <div class="tool-btn" onclick="addSVG('bike_system')" title="自行车传动"><i class="fas fa-bicycle"></i></div>
+                    
+                </div>
+                </div>
+
+                <div class="sb-group" data-group="电磁学组件">
+                <div class="sb-group-title" onclick="toggleGroup(this)"><i class="fas fa-chevron-down sb-group-icon"></i> 电磁学组件</div>
+                <div class="sb-grid">
+                    <div class="tool-btn" onclick="addSVG('resistor')" title="电阻"><i class="fas fa-wave-square" style="font-size:10px"></i></div>
+                    <div class="tool-btn" onclick="addSVG('inductor')" title="电感线圈"><i class="fas fa-uniregistry" style="font-size:10px"></i></div>
+                    <div class="tool-btn" onclick="addSVG('mutual_ind')" title="互感线圈">M</div>
+                    <div class="tool-btn" onclick="addSVG('rheostat')" title="滑动变阻器"><i class="fas fa-sliders-h" style="font-size:10px"></i></div>
+                    <div class="tool-btn" onclick="addSVG('battery')" title="电源"><i class="fas fa-battery-half"></i></div>
+                    <div class="tool-btn" onclick="addSVG('ac_source')" title="交流电">~</div>
+                    <div class="tool-btn" onclick="addSVG('ground')" title="接地"><i class="fas fa-arrow-down" style="font-size:10px"></i></div>
+                    <div class="tool-btn" onclick="addSVG('capacitor')" title="电容"><i class="fas fa-pause" style="transform: rotate(90deg);"></i></div>
+                    <div class="tool-btn" onclick="addSVG('diode')" title="二极管"><i class="fas fa-play" style="font-size:10px"></i>|</div>
+                    <div class="tool-btn" onclick="addSVG('switch')" title="开关"><i class="fas fa-toggle-off"></i></div>
+                    <div class="tool-btn" onclick="addSVG('bulb')" title="灯泡"><i class="far fa-lightbulb"></i></div>
+                    <div class="tool-btn" onclick="addSVG('transformer')" title="变压器"><i class="fas fa-random" style="font-size:10px"></i></div>
+                    <div class="tool-btn" onclick="addSVG('meter_a')" title="电流表">A</div>
+                    <div class="tool-btn" onclick="addSVG('meter_v')" title="电压表">V</div>
+                    <div class="tool-btn" onclick="addSVG('meter_g')" title="灵敏电流计">G</div>
+                    <div class="tool-btn" onclick="addSVG('mag_in')" title="磁场入">×</div>
+                    <div class="tool-btn" onclick="addSVG('mag_out')" title="磁场出">·</div>
+                    <div class="tool-btn" onclick="addSVG('magnet_u')" title="马蹄形磁铁"><i class="fas fa-magnet"></i></div>
+                    <div class="tool-btn" onclick="addSVG('charge_pos')" title="正电荷" style="color:red; font-weight:bold;">+Q</div>
+                    <div class="tool-btn" onclick="addSVG('charge_neg')" title="负电荷" style="color:blue; font-weight:bold;">-Q</div>
+                    <div class="tool-btn" onclick="addSVG('conductor_pillow')" title="枕形导体"><i class="fas fa-dumbbell"></i></div>
+                    <div class="tool-btn" onclick="addSVG('electroscope')" title="验电器"><i class="fas fa-bolt"></i></div>
+                    <div class="tool-btn" onclick="addSVG('efield_pos_point')" title="正电荷电场线" style="color:red"><i class="fas fa-sun"></i></div>
+                    <div class="tool-btn" onclick="addSVG('efield_neg_point')" title="负电荷电场线" style="color:blue"><i class="fas fa-snowflake"></i></div>
+                    <div class="tool-btn" onclick="addSVG('efield_dipole')" title="异种电荷电场"><i class="fas fa-magnet"></i></div>
+                    <div class="tool-btn" onclick="addSVG('efield_repulsion')" title="同种电荷排斥"><i class="fas fa-arrows-alt-h"></i></div>
+                    <div class="tool-btn" onclick="addSVG('efield_arbitrary')" title="任意电场"><i class="fas fa-wind"></i></div>
+                    <div class="tool-btn" onclick="addSVG('crt_oscilloscope')" title="示波器原理"><i class="fas fa-tv"></i></div>
+                    <div class="tool-btn" onclick="addSVG('caliper')" title="游标卡尺"><i class="fas fa-ruler-combined"></i></div>
+                    <div class="tool-btn" onclick="addSVG('micrometer')" title="螺旋测微器"><i class="fas fa-microscope"></i></div>
+                    <div class="tool-btn" onclick="addSVG('multimeter')" title="多用电表"><i class="fas fa-tachometer-alt"></i></div>
+                    <div class="tool-btn" onclick="addSVG('magnetic_needle_small')" title="小磁针"><i class="far fa-compass"></i></div>
+                    <div class="tool-btn" onclick="addSVG('bar_magnet')" title="条形磁铁"><i class="fas fa-magnet"></i></div>
+                    <div class="tool-btn" onclick="addSVG('current_loop')" title="环形电流"><i class="far fa-circle"></i></div>
+                    <div class="tool-btn" onclick="addSVG('solenoid_current')" title="通电螺线管"><i class="fas fa-stream"></i></div>
+                    <div class="tool-btn" onclick="addSVG('b_field_uniform_ns')" title="匀强磁场 (N-S正对)"><i class="fas fa-align-justify" style="transform: rotate(90deg);"></i></div>
+                    <div class="tool-btn" onclick="addSVG('crt_magnetic')" title="显像管 (磁偏转)"><i class="fas fa-tv" style="color:#dcb368;"></i></div>
+                   
+                </div>
+                </div>
+
+                <div class="sb-group" data-group="光学组件">
+                <div class="sb-group-title" onclick="toggleGroup(this)"><i class="fas fa-chevron-down sb-group-icon"></i> 光学组件</div>
+                <div class="sb-grid">
+                    <div class="tool-btn" onclick="addSVG('lens')" title="凸透镜"><i class="fas fa-bullseye"></i></div>
+                    <div class="tool-btn" onclick="addSVG('lens_concave')" title="凹透镜">)(</div>
+                    <div class="tool-btn" onclick="addSVG('mirror_flat')" title="平面镜">|///</div>
+                    <div class="tool-btn" onclick="addSVG('mirror_convex')" title="凸面镜">)///</div>
+                    <div class="tool-btn" onclick="addSVG('mirror_concave')" title="凹面镜">(///</div>
+                    <div class="tool-btn" onclick="addSVG('prism')" title="三棱镜">△</div>
+                    <div class="tool-btn" onclick="addSVG('doubleslit')" title="双缝">||</div>
+                    <div class="tool-btn" onclick="addSVG('grating')" title="光栅">|||</div>
+                    <div class="tool-btn" onclick="addSVG('youngs_exp')" title="杨氏干涉"><i class="fas fa-wave-square" style="font-size:10px"></i></div>
+                    <div class="tool-btn" onclick="addSVG('michelson')" title="迈克尔逊仪"><i class="fas fa-project-diagram" style="font-size:10px"></i></div>
+                    <div class="tool-btn" onclick="addSVG('youngs_interference')" title="杨氏双缝干涉实验"><i class="fas fa-wave-square" style="color:red;"></i></div>
+                    <div class="tool-btn" onclick="addSVG('michelson_interferometer')" title="迈克尔逊干涉仪"><i class="fas fa-bullseye" style="color:red;"></i></div>
+                </div>
+                </div>
+
+                <div class="sb-group" data-group="热学组件">
+                <div class="sb-group-title" onclick="toggleGroup(this)"><i class="fas fa-chevron-down sb-group-icon"></i> 热学组件</div>
+                <div class="sb-grid">
+                    <div class="tool-btn" onclick="addSVG('thermometer')" title="温度计"><i class="fas fa-thermometer-half"></i></div>
+                    <div class="tool-btn" onclick="addSVG('flame')" title="加热/火焰"><i class="fas fa-fire"></i></div>
+                    <div class="tool-btn" onclick="addSVG('piston')" title="气缸活塞"><i class="fas fa-level-down-alt"></i></div>
+                </div>
+                </div>
+
+                <div class="sb-group" data-group="近代物理组件">
+                <div class="sb-group-title" onclick="toggleGroup(this)"><i class="fas fa-chevron-down sb-group-icon"></i> 近代物理组件</div>
+                <div class="sb-grid">
+                    <div class="tool-btn" onclick="addSVG('atom_bohr')" title="原子模型"><i class="fas fa-atom"></i></div>
+                    <div class="tool-btn" onclick="addSVG('photoelectric')" title="光电效应"><i class="fas fa-bolt"></i></div>
+                </div>
+                </div>
+
+            </div>
+            <div class="sidebar-credit">作者：董兴习｜合肥一六八中学<br>许琴｜华东师范大学</div>
+        </div>
+
+        <div id="mainCanvasContainer">
+            <canvas id="c"></canvas>
+            
+            <div class="prop-panel" id="propPanel">
+                <span class="prop-panel-label" id="propPanelLabel">线条/图形</span>
+                <input type="color" id="colorPicker" value="#000000" onchange="updateProp()" title="颜色">
+                <input type="range" id="widthPicker" min="1" max="10" value="2" title="粗细" onchange="updateProp()">
+                <label><input type="checkbox" id="dashCheck" onchange="updateProp()"> 虚线</label>
+                <span class="prop-sep" id="propSep">|</span>
+                <span class="prop-panel-label" id="brushPanelLabel" style="display:none;">画笔</span>
+                <input type="color" id="brushColorPicker" value="#000000" style="display:none;" title="画笔颜色" onchange="applyBrushStyle()">
+                <input type="range" id="brushWidthPicker" min="1" max="24" value="3" style="display:none;" title="画笔粗细" onchange="applyBrushStyle()">
+                <label class="brush-eraser-wrap" id="brushEraserWrap" style="display:none;"><input type="checkbox" id="brushEraserCheck" onchange="applyBrushStyle()"> 橡皮擦</label>
+            </div>
+
+            <div class="formula-box">
+                <div class="formula-tabs">
+                    <div class="tab-item active" onclick="switchTab(0)">数学</div>
+                    <div class="tab-item" onclick="switchTab(1)">希腊</div>
+                    <div class="tab-item" onclick="switchTab(2)">物理</div>
+                    <div class="tab-item" onclick="switchTab(3)">结构</div>
+                    <div class="tab-item" onclick="switchTab(4)">常用公式</div>
+                </div>
+                <div class="sym-scroll-area">
+                    <div class="tab-content active" id="tab-0">
+                        <div class="sym-grid">
+                            <div class="sym-key" onclick="addSym('+')">+</div><div class="sym-key" onclick="addSym('-')">-</div>
+                            <div class="sym-key" onclick="addSym('×')">×</div><div class="sym-key" onclick="addSym('÷')">÷</div>
+                            <div class="sym-key" onclick="addSym('=')">=</div><div class="sym-key" onclick="addSym('≈')">≈</div>
+                            <div class="sym-key" onclick="addSym('≠')">≠</div><div class="sym-key" onclick="addSym('≡')">≡</div>
+                            <div class="sym-key" onclick="addSym('±')">±</div><div class="sym-key" onclick="addSym('∓')">∓</div>
+                            <div class="sym-key" onclick="addSym('∞')">∞</div><div class="sym-key" onclick="addSym('√')">√</div>
+                            <div class="sym-key" onclick="addSym('<')">&lt;</div><div class="sym-key" onclick="addSym('>')">&gt;</div>
+                            <div class="sym-key" onclick="addSym('≤')">≤</div><div class="sym-key" onclick="addSym('≥')">≥</div>
+                            <div class="sym-key" onclick="addSym('∝')">∝</div><div class="sym-key" onclick="addSym('~')">~</div>
+                            <div class="sym-key" onclick="addSym('∴')">∴</div><div class="sym-key" onclick="addSym('∵')">∵</div>
+                            <div class="sym-key" onclick="addSym('∫')">∫</div><div class="sym-key" onclick="addSym('∑')">∑</div>
+                            <div class="sym-key" onclick="addSym('∏')">∏</div><div class="sym-key" onclick="addSym('∂')">∂</div>
+                            <div class="sym-key" onclick="addSym('°')">°</div><div class="sym-key" onclick="addSym('·')">·</div>
+                        </div>
+                    </div>
+                    <div class="tab-content" id="tab-1">
+                        <div class="sym-grid">
+                            <div class="sym-key" onclick="addSym('α')">α</div><div class="sym-key" onclick="addSym('β')">β</div>
+                            <div class="sym-key" onclick="addSym('γ')">γ</div><div class="sym-key" onclick="addSym('δ')">δ</div>
+                            <div class="sym-key" onclick="addSym('ε')">ε</div><div class="sym-key" onclick="addSym('ζ')">ζ</div>
+                            <div class="sym-key" onclick="addSym('η')">η</div><div class="sym-key" onclick="addSym('θ')">θ</div>
+                            <div class="sym-key" onclick="addSym('λ')">λ</div><div class="sym-key" onclick="addSym('μ')">μ</div>
+                            <div class="sym-key" onclick="addSym('π')">π</div><div class="sym-key" onclick="addSym('ρ')">ρ</div>
+                            <div class="sym-key" onclick="addSym('σ')">σ</div><div class="sym-key" onclick="addSym('τ')">τ</div>
+                            <div class="sym-key" onclick="addSym('φ')">φ</div><div class="sym-key" onclick="addSym('ω')">ω</div>
+                            <div class="sym-key" onclick="addSym('Δ')">Δ</div><div class="sym-key" onclick="addSym('Σ')">Σ</div>
+                            <div class="sym-key" onclick="addSym('Ω')">Ω</div><div class="sym-key" onclick="addSym('Ψ')">Ψ</div>
+                        </div>
+                    </div>
+                    <div class="tab-content" id="tab-2">
+                        <div class="sym-grid" style="grid-template-columns: repeat(4, 1fr);">
+                            <div class="sym-key" onclick="addSym('F')">F</div><div class="sym-key" onclick="addSym('F_N')">F_N</div>
+                            <div class="sym-key" onclick="addSym('F_f')">F_f</div><div class="sym-key" onclick="addSym('a')">a</div>
+                            <div class="sym-key" onclick="addSym('v')">v</div><div class="sym-key" onclick="addSym('v_0')">v_0</div>
+                            <div class="sym-key" onclick="addSym('x')">x</div><div class="sym-key" onclick="addSym('t')">t</div>
+                            <div class="sym-key" onclick="addSym('m')">m</div><div class="sym-key" onclick="addSym('g')">g</div>
+                            <div class="sym-key" onclick="addSym('mg')">mg</div><div class="sym-key" onclick="addSym('ma')">ma</div>
+                            <div class="sym-key" onclick="addSym('E_k')">E_k</div><div class="sym-key" onclick="addSym('E_p')">E_p</div>
+                            <div class="sym-key" onclick="addSym('E')">E</div><div class="sym-key" onclick="addSym('W')">W</div>
+                            <div class="sym-key" onclick="addSym('P')">P</div><div class="sym-key" onclick="addSym('U')">U</div>
+                            <div class="sym-key" onclick="addSym('I')">I</div><div class="sym-key" onclick="addSym('R')">R</div>
+                            <div class="sym-key" onclick="addSym('B')">B</div><div class="sym-key" onclick="addSym('Φ')">Φ</div>
+                            <div class="sym-key" onclick="addSym('f')">f</div><div class="sym-key" onclick="addSym('T')">T</div>
+                            <div class="sym-key" onclick="addSym('λ')">λ</div><div class="sym-key" onclick="addSym('c')">c</div>
+                            <div class="sym-key" onclick="addSym('Q')">Q</div><div class="sym-key" onclick="addSym('q')">q</div>
+                        </div>
+                    </div>
+                    <div class="tab-content" id="tab-3">
+                        <div class="sym-grid" style="grid-template-columns: repeat(4, 1fr);">
+                            <div class="sym-key" onclick="addSym('/')">/</div><div class="sym-key" onclick="addSym('^')">^</div>
+                            <div class="sym-key" onclick="addSym('_')">_</div><div class="sym-key" onclick="addSym('()')">( )</div>
+                            <div class="sym-key" onclick="addSym('{}')">{ }</div><div class="sym-key" onclick="addSym('[]')">[ ]</div>
+                            <div class="sym-key" onclick="addSym('√()')">√( )</div><div class="sym-key" onclick="addSym('∑_i')">∑_i</div>
+                        </div>
+                    </div>
+                    <div class="tab-content" id="tab-4">
+                        <div class="formula-quick-grid">
+                            <div class="sym-key formula-quick" onclick="addSym('F=ma')">F=ma</div>
+                            <div class="sym-key formula-quick" onclick="addSym('E_k=½mv^2')">E_k=½mv²</div>
+                            <div class="sym-key formula-quick" onclick="addSym('E_p=mgh')">E_p=mgh</div>
+                            <div class="sym-key formula-quick" onclick="addSym('v^2=2ax')">v²=2ax</div>
+                            <div class="sym-key formula-quick" onclick="addSym('E=mc^2')">E=mc²</div>
+                            <div class="sym-key formula-quick" onclick="addSym('F=Gm_1m_2/r^2')">F=Gm₁m₂/r²</div>
+                            <div class="sym-key formula-quick" onclick="addSym('P=UI')">P=UI</div>
+                            <div class="sym-key formula-quick" onclick="addSym('U=IR')">U=IR</div>
+                            <div class="sym-key formula-quick" onclick="addSym('½')">½</div>
+                            <div class="sym-key formula-quick" onclick="addSym('¼')">¼</div>
+                            <div class="sym-key formula-quick" onclick="addSym('¾')">¾</div>
+                            <div class="sym-key formula-quick" onclick="addSym('√(x)')">√(x)</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="formula-hint">下标 _x ，上标 ^2 ，分数用 /</div>
+                <div class="formula-input-row">
+                    <input type="text" id="formulaInput" placeholder="输入公式，如 F=ma 或 E_k=½mv^2" title="下标用 _x，上标用 ^2">
+                    <button type="button" class="btn-sm" onclick="insertFormula()">插入</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="users.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script>
+// 公式、画布对象均由 app.js 的 Fabric 画布统一管理，以便保存、导出和撤销。
+function switchTab(idx) {
+    document.querySelectorAll('.tab-item').forEach((t, i) => t.classList.toggle('active', i === idx));
+    document.querySelectorAll('.tab-content').forEach((c, i) => c.classList.toggle('active', i === idx));
+}
+function filterComponents() {
+    var q = (document.getElementById('componentSearch') || {}).value.trim().toLowerCase();
+    document.querySelectorAll('.sb-group').forEach(function(group) {
+        var titleEl = group.querySelector('.sb-group-title');
+        var grid = group.querySelector('.sb-grid');
+        var buttons = group.querySelectorAll('.tool-btn');
+        var visibleCount = 0;
+        buttons.forEach(function(btn) {
+            var title = (btn.getAttribute('title') || '').toLowerCase();
+            var match = !q || title.indexOf(q) >= 0;
+            btn.style.display = match ? '' : 'none';
+            if (match) visibleCount++;
+        });
+        if (grid) grid.style.display = visibleCount ? '' : 'none';
+        if (titleEl) titleEl.style.display = visibleCount || q ? '' : 'none';
+    });
+}
+
+function toggleGroup(titleEl) {
+    var group = titleEl.closest('.sb-group');
+    if (!group) return;
+    var grid = group.querySelector('.sb-grid');
+    var icon = titleEl.querySelector('.sb-group-icon');
+    if (group.classList.contains('collapsed')) {
+        group.classList.remove('collapsed');
+        if (grid) grid.style.display = '';
+        if (icon) icon.style.transform = '';
+    } else {
+        group.classList.add('collapsed');
+        if (grid) grid.style.display = 'none';
+        if (icon) icon.style.transform = 'rotate(-90deg)';
+    }
+}
+</script>
+</body>
+</html>
